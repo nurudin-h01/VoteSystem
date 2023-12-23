@@ -29,10 +29,9 @@ type Candidate = typeof Candidate.tsType;
 const ResultPolling = Record({
     id: Principal,
     name: text,
-    count: int
+    count: BigInt
 })
 type ResultPolling = typeof ResultPolling.tsType;
-
 
 const Citizen = Record({
     id: Principal,
@@ -65,23 +64,20 @@ export default Canister({
         return candidate;
     }),
     readPolling: query([], Vec(ResultPolling), () => {
-        if(!resultPollings.isEmpty()){            
-            let result = resultPollings.values()
-            result.map((x)=>{
-                resultPollings.remove(x.id)
-            })
+        if (candidates.isEmpty()) {
+            return [];
         }
 
-        let data = candidates.values();
-        data.map((x)=>{
-            let result: ResultPolling = {
-                id: x.id,
-                name: x.name,
-                count: BigInt(x.citizenIds.length)
-            };
-            resultPollings.insert(x.id, result)
-        })
-        return resultPollings.values()
+        const results = candidates.values().map((candidate) => ({
+            id: candidate.id,
+            name: candidate.name,
+            count: BigInt(candidate.citizenIds.length)
+        }));
+
+        resultPollings.clear();
+        resultPollings.batchInsert(results.map((result) => [result.id, result]));
+
+        return results;
     }),
     readCandidates: query([], Vec(Candidate), () => {
         return candidates.values();
@@ -91,15 +87,13 @@ export default Canister({
         [text, int, Principal],
         Result(Citizen, DataError),
         (name, natIdentificationNumber, candidateId) => {
-            const userOpt = candidates.get(candidateId);
+            const candidate = candidates.get(candidateId);
 
-            if ('None' in userOpt) {
+            if ('None' in candidate) {
                 return Err({
                     CandidateDoesNotExist: candidateId
                 });
             }
-
-            const candidate = userOpt.Some;
 
             const id = Principal.fromText(`${name}-${natIdentificationNumber}-${ic.time()}`);
             const citizen: Citizen = {
@@ -112,8 +106,8 @@ export default Canister({
             citizens.insert(citizen.id, citizen);
 
             const updatedCandidate: Candidate = {
-                ...candidate,
-                citizenIds: [...candidate.citizenIds, citizen.id]
+                ...candidate.Some,
+                citizenIds: [...candidate.Some.citizenIds, citizen.id]
             };
 
             candidates.insert(updatedCandidate.id, updatedCandidate);
@@ -128,4 +122,3 @@ export default Canister({
         return citizens.get(id);
     }),
 });
-
