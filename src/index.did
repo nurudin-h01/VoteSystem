@@ -1,11 +1,26 @@
-service: () -> {
-    createCandidate: (text) -> (record {id:principal; citizenIds:vec principal; name:text; createdAt:nat64});
-    createCitizen: (text, principal) -> (variant {Ok:record {id:principal; name:text; createdAt:nat64; candidateId:principal}; Err:variant {CitizenDoesNotExist:principal; CandidateDoesNotExist:principal}});
-    deleteCandidate: (principal) -> (variant {Ok:record {id:principal; citizenIds:vec principal; name:text; createdAt:nat64}; Err:variant {CitizenDoesNotExist:principal; CandidateDoesNotExist:principal}});
-    deleteCitizen: (principal) -> (variant {Ok:record {id:principal; name:text; createdAt:nat64; candidateId:principal}; Err:variant {CitizenDoesNotExist:principal; CandidateDoesNotExist:principal}});
-    readCandidateById: (principal) -> (opt record {id:principal; citizenIds:vec principal; name:text; createdAt:nat64}) query;
-    readCandidates: () -> (vec record {id:principal; name:text; count:int}) query;
-    readCitizenById: (principal) -> (opt record {id:principal; name:text; createdAt:nat64; candidateId:principal}) query;
-    readCitizens: () -> (vec record {id:principal; name:text; createdAt:nat64; candidateId:principal}) query;
-    readPollingById: (principal) -> (text) query;
+type Candidate = record {
+  id : text;
+  citizenIds : vec text;
+  natIdentificationNumber : int;
+  name : text;
+};
+type Citizen = record {
+  id : text;
+  natIdentificationNumber : int;
+  name : text;
+  candidateId : text;
+};
+type DataError = variant {
+  CitizenDoesNotExist : text;
+  CandidateDoesNotExist : text;
+};
+type ResultPolling = record { id : text; name : text; count : nat64 };
+type _AzleResult = variant { Ok : Citizen; Err : DataError };
+service : () -> {
+  createCandidate : (text, nat64) -> (Candidate);
+  createCitizenAndVote : (text, int, text) -> (_AzleResult);
+  readCandidates : () -> (vec Candidate) query;
+  readCitizenById : (text) -> (opt Citizen) query;
+  readCitizens : () -> (vec Citizen) query;
+  readPolling : () -> (vec ResultPolling) query;
 }
